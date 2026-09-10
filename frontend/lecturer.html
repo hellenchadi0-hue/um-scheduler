@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OfficeHours — Lecturer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <h1>OfficeHours</h1>
+    <p>Lecturer dashboard</p>
+  </header>
+
+  <main>
+    <form id="loginForm" class="login-form">
+      <label for="lecturerName">Staff email</label>
+      <input type="email" id="lecturerName" placeholder="you@ump.ac.za" autocomplete="off" required>
+
+      <label for="lecturerPassword">Password</label>
+      <input type="password" id="lecturerPassword" placeholder="Password" required>
+
+      <button type="submit">Sign in</button>
+    </form>
+
+    <div id="dashboard" class="dashboard hidden">
+      <p id="welcomeMsg"></p>
+      <div id="slotGrid" class="slot-grid"></div>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

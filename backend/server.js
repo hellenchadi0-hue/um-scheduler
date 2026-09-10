@@ -1,0 +1,235 @@
+const express = require("express");
+const cors = require("cors");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const db = require("./db");
+
+const app = express();
+const PORT = 3000;
+
+app.use(cors());
+app.use(express.json());
+
+// JWT secret
+// For a real/deployed application, store this in an environment variable.
+const JWT_SECRET = "dev-secret-change-this-later";
+
+app.get("/api/health", (req, res) => {
+  res.json({ status: "OfficeHours backend is running" });
+});
+
+// LECTURER REGISTRATION
+
+app.post("/api/lecturer/register", (req, res) => {
+  const { name, staff_email, password } = req.body;
+
+  if (!name || !staff_email || !password) {
+    return res.status(400).json({ error: "All fields are required." });
+  }
+
+  const password_hash = bcrypt.hashSync(password, 10);
+
+  try {
+    const stmt = db.prepare(
+      `INSERT INTO lecturers (name, staff_email, password_hash) VALUES (?, ?, ?)`
+    );
+    const result = stmt.run(name, staff_email, password_hash);
+    res.status(201).json({ id: result.lastInsertRowid, name, staff_email });
+  } catch (err) {
+    if (err.message.includes("UNIQUE")) {
+      return res.status(409).json({ error: "That staff email is already registered." });
+    }
+    console.error(err);
+    res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
+// LECTURER LOGIN
+
+app.post("/api/lecturer/login", (req, res) => {
+  const { staff_email, password } = req.body;
+
+  if (!staff_email || !password) {
+    return res.status(400).json({ error: "Email and password are required." });
+  }
+
+  const lecturer = db.prepare("SELECT * FROM lecturers WHERE staff_email = ?").get(staff_email);
+
+  if (!lecturer) {
+    return res.status(401).json({ error: "Invalid email or password." });
+  }
+
+  const passwordMatches = bcrypt.compareSync(password, lecturer.password_hash);
+
+  if (!passwordMatches) {
+    return res.status(401).json({ error: "Invalid email or password." });
+  }
+
+  const token = jwt.sign({ id: lecturer.id, name: lecturer.name }, JWT_SECRET, { expiresIn: "8h" });
+
+  res.json({ token, name: lecturer.name });
+});
+
+// STUDENT REGISTRATION
+
+app.post("/api/student/register", (req, res) => {
+  const { name, student_number, email, password } = req.body;
+
+  if (!name || !student_number || !email || !password) {
+    return res.status(400).json({ error: "All fields are required." });
+  }
+
+  const password_hash = bcrypt.hashSync(password, 10);
+
+  try {
+    const stmt = db.prepare(
+      `INSERT INTO students (name, student_number, email, password_hash) VALUES (?, ?, ?, ?)`
+    );
+    const result = stmt.run(name, student_number, email, password_hash);
+    res.status(201).json({ id: result.lastInsertRowid, name, student_number, email });
+  } catch (err) {
+    if (err.message.includes("UNIQUE")) {
+      return res.status(409).json({ error: "That student number is already registered." });
+    }
+    console.error(err);
+    res.status(500).json({ error: "Something went wrong." });
+  }
+});
+
+// STUDENT LOGIN
+
+app.post("/api/student/login", (req, res) => {
+  const { student_number, password } = req.body;
+
+  if (!student_number || !password) {
+    return res.status(400).json({ error: "Student number and password are required." });
+  }
+
+  const student = db.prepare("SELECT * FROM students WHERE student_number = ?").get(student_number);
+
+  if (!student) {
+    return res.status(401).json({ error: "Invalid student number or password." });
+  }
+
+  const passwordMatches = bcrypt.compareSync(password, student.password_hash);
+
+  if (!passwordMatches) {
+    return res.status(401).json({ error: "Invalid student number or password." });
+  }
+
+  const token = jwt.sign({ id: student.id, name: student.name }, JWT_SECRET, { expiresIn: "8h" });
+
+  res.json({ token, name: student.name });
+});
+
+// LECTURER AUTH MIDDLEWARE
+
+function requireLecturerAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Not logged in." });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.lecturer = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid or expired token." });
+  }
+}
+
+// STUDENT AUTH MIDDLEWARE
+
+function requireStudentAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Not logged in." });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.student = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid or expired token." });
+  }
+}
+
+// CREATE MULTIPLE SLOTS AT ONCE (lecturer only)
+// e.g. { "day": "Wed", "start": "14:00", "end": "16:00", "durationMinutes": 15 }
+app.post("/api/lecturer/slots/bulk", requireLecturerAuth, (req, res) => {
+  const { day, start, end, durationMinutes } = req.body;
+  const lecturerId = req.lecturer.id;
+
+  if (!day || !start || !end || !durationMinutes) {
+    return res.status(400).json({ error: "day, start, end, and durationMinutes are required." });
+  }
+
+  const toMinutes = (time) => {
+    const [h, m] = time.split(":").map(Number);
+    return h * 60 + m;
+  };
+
+  const startMin = toMinutes(start);
+  const endMin = toMinutes(end);
+
+  const insertStmt = db.prepare(
+    "INSERT INTO slots (lecturer_id, day_time, status) VALUES (?, ?, 'open')"
+  );
+
+  const createdSlots = [];
+
+  for (let t = startMin; t + durationMinutes <= endMin; t += durationMinutes) {
+    const hours = Math.floor(t / 60).toString().padStart(2, "0");
+    const mins = (t % 60).toString().padStart(2, "0");
+    const day_time = `${day} ${hours}:${mins}`;
+
+    const result = insertStmt.run(lecturerId, day_time);
+    createdSlots.push({ id: result.lastInsertRowid, day_time });
+  }
+
+  res.status(201).json({ created: createdSlots.length, slots: createdSlots });
+});
+
+// VIEW OPEN SLOTS FOR A LECTURER (public — no login needed to browse)
+app.get("/api/lecturer/:lecturerId/slots", (req, res) => {
+  const { lecturerId } = req.params;
+
+  const slots = db
+    .prepare("SELECT id, day_time, status FROM slots WHERE lecturer_id = ? AND status = 'open'")
+    .all(lecturerId);
+
+  res.json(slots);
+});
+
+// BOOK A SLOT (student only, must be logged in)
+app.post("/api/slots/:slotId/book", requireStudentAuth, (req, res) => {
+  const { slotId } = req.params;
+  const studentId = req.student.id;
+
+  const updateResult = db
+    .prepare("UPDATE slots SET status = 'booked' WHERE id = ? AND status = 'open'")
+    .run(slotId);
+
+  if (updateResult.changes === 0) {
+    return res.status(409).json({ error: "Sorry, that slot was just taken." });
+  }
+
+  const bookingStmt = db.prepare("INSERT INTO bookings (slot_id, student_id) VALUES (?, ?)");
+  bookingStmt.run(slotId, studentId);
+
+  res.status(201).json({ message: "Slot booked successfully." });
+});
+
+// START SERVER
+
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+});
