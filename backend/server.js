@@ -10,8 +10,7 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
-// JWT secret
-// For a real/deployed application, store this in an environment variable.
+
 const JWT_SECRET = "dev-secret-change-this-later";
 
 app.get("/api/health", (req, res) => {
@@ -162,8 +161,6 @@ function requireStudentAuth(req, res, next) {
   }
 }
 
-// CREATE MULTIPLE SLOTS AT ONCE (lecturer only)
-// e.g. { "day": "Wed", "start": "14:00", "end": "16:00", "durationMinutes": 15 }
 app.post("/api/lecturer/slots/bulk", requireLecturerAuth, (req, res) => {
   const { day, start, end, durationMinutes } = req.body;
   const lecturerId = req.lecturer.id;
@@ -228,6 +225,21 @@ app.post("/api/slots/:slotId/book", requireStudentAuth, (req, res) => {
   res.status(201).json({ message: "Slot booked successfully." });
 });
 
+// VIEW BOOKINGS FOR A LECTURER (lecturer only, must be logged in)
+app.get("/api/lecturer/bookings", requireLecturerAuth, (req, res) => {
+  const lecturerId = req.lecturer.id;
+
+  const bookings = db.prepare(`
+    SELECT slots.day_time, students.name AS student_name, students.student_number
+    FROM bookings
+    JOIN slots ON bookings.slot_id = slots.id
+    JOIN students ON bookings.student_id = students.id
+    WHERE slots.lecturer_id = ?
+    ORDER BY slots.day_time
+  `).all(lecturerId);
+
+  res.json(bookings);
+});
 // START SERVER
 
 app.listen(PORT, () => {

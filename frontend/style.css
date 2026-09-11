@@ -109,3 +109,6 @@ select {
   color: #721c24;
   cursor: not-allowed;
 }
+.hidden {
+  display: none;
+}
