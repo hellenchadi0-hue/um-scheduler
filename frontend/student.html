@@ -10,50 +10,64 @@
 
   <header>
     <h1>OfficeHours</h1>
-    <p>Student booking</p>
+    <p>Book a private meeting with your lecturer</p>
+    <nav><a href="index.html">Home</a> · <a href="lecturer.html">Lecturer</a></nav>
   </header>
 
   <main>
-    <form id="studentLoginForm" class="login-form">
-      <label for="studentNumber">Student number</label>
-      <input type="text" id="studentNumber" placeholder="20231234" required>
+    <form id="studentLoginForm" class="card login-form">
+      <label for="loginNumber">Student number</label>
+      <input type="text" id="loginNumber" inputmode="numeric" autocomplete="off" required>
 
-      <label for="studentPassword">Password</label>
-      <input type="password" id="studentPassword" placeholder="Password" required>
+      <label for="loginPassword">Password</label>
+      <input type="password" id="loginPassword" required>
 
       <button type="submit">Sign in</button>
+      <p class="msg" id="studentLoginMsg" role="alert"></p>
       <p><a href="#" id="showStudentRegister">New here? Register</a></p>
     </form>
 
-    <form id="studentRegisterForm" class="login-form hidden">
-      <label for="regStudentName">Full name</label>
-      <input type="text" id="regStudentName" placeholder="Thabo Mahlangu" required>
+    <form id="studentRegisterForm" class="card login-form hidden">
+      <label for="regStuName">Full name</label>
+      <input type="text" id="regStuName" required>
 
-      <label for="regStudentNumber">Student number</label>
-      <input type="text" id="regStudentNumber" placeholder="20231234" required>
+      <label for="regStuNumber">Student number</label>
+      <input type="text" id="regStuNumber" inputmode="numeric" required>
 
-      <label for="regStudentEmail">Student email</label>
-      <input type="email" id="regStudentEmail" placeholder="you@ump.ac.za" required>
+      <label for="regStuEmail">Email</label>
+      <input type="email" id="regStuEmail" required>
 
-      <label for="regStudentPassword">Password</label>
-      <input type="password" id="regStudentPassword" placeholder="Choose a password" required>
+      <label for="regStuPassword">Password</label>
+      <input type="password" id="regStuPassword" minlength="6" placeholder="Min 6 characters" required>
 
       <button type="submit">Create account</button>
+      <p class="msg" id="studentRegisterMsg" role="alert"></p>
       <p><a href="#" id="showStudentLogin">Already have an account? Sign in</a></p>
     </form>
 
     <div id="studentDashboard" class="dashboard hidden">
-      <p id="studentWelcomeMsg"></p>
+      <div class="welcome-row">
+        <p id="studentWelcome"></p>
+        <button type="button" id="studentLogout" class="secondary">Sign out</button>
+      </div>
 
-      <label for="lecturerPicker">Choose a lecturer</label>
-      <select id="lecturerPicker">
-        <option value="">-- Select a lecturer --</option>
-      </select>
+      <section class="card">
+        <h2>Book a meeting</h2>
+        <label for="lecturerSelect">Lecturer</label>
+        <select id="lecturerSelect"></select>
+        <p class="hint" id="noLecturers"></p>
+        <p class="hint">Click a green time to book it.</p>
+        <div id="studentSlots" class="slot-grid"></div>
+        <p class="msg" id="bookMsg" role="alert"></p>
+      </section>
 
-      <div id="studentSlotGrid" class="slot-grid"></div>
+      <section class="card">
+        <h2>My bookings</h2>
+        <div id="myBookings"></div>
+      </section>
     </div>
   </main>
 
-  <script src="script.js"></script>
+  <script src="student.js"></script>
 </body>
 </html>

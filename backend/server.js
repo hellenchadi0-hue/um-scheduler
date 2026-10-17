@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
@@ -10,6 +11,8 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json());
 
+// Serve the website (../frontend) from the same server, so http://localhost:3000 opens it.
+app.use(express.static(path.join(__dirname, "..", "frontend")));
 
 const JWT_SECRET = "dev-secret-change-this-later";
 
@@ -176,23 +179,48 @@ app.post("/api/lecturer/slots/bulk", requireLecturerAuth, (req, res) => {
 
   const startMin = toMinutes(start);
   const endMin = toMinutes(end);
+  const duration = Number(durationMinutes);
+
+  if (!Number.isFinite(duration) || duration < 5) {
+    return res.status(400).json({ error: "Slot length must be at least 5 minutes." });
+  }
+  if (!(endMin > startMin)) {
+    return res.status(400).json({ error: "End time must be after start time." });
+  }
+
+  // don't create the same slot twice
+  const existing = new Set(
+    db.prepare("SELECT day_time FROM slots WHERE lecturer_id = ?").all(lecturerId).map((r) => r.day_time)
+  );
 
   const insertStmt = db.prepare(
     "INSERT INTO slots (lecturer_id, day_time, status) VALUES (?, ?, 'open')"
   );
 
   const createdSlots = [];
+  let skipped = 0;
 
-  for (let t = startMin; t + durationMinutes <= endMin; t += durationMinutes) {
+  for (let t = startMin; t + duration <= endMin; t += duration) {
     const hours = Math.floor(t / 60).toString().padStart(2, "0");
     const mins = (t % 60).toString().padStart(2, "0");
     const day_time = `${day} ${hours}:${mins}`;
+
+    if (existing.has(day_time)) {
+      skipped++;
+      continue;
+    }
 
     const result = insertStmt.run(lecturerId, day_time);
     createdSlots.push({ id: result.lastInsertRowid, day_time });
   }
 
-  res.status(201).json({ created: createdSlots.length, slots: createdSlots });
+  res.status(201).json({ created: createdSlots.length, skipped, slots: createdSlots });
+});
+
+// LIST ALL LECTURERS (public — students pick one to book with)
+app.get("/api/lecturers", (req, res) => {
+  const lecturers = db.prepare("SELECT id, name FROM lecturers ORDER BY name").all();
+  res.json(lecturers);
 });
 
 // VIEW OPEN SLOTS FOR A LECTURER (public — no login needed to browse)
@@ -204,6 +232,32 @@ app.get("/api/lecturer/:lecturerId/slots", (req, res) => {
     .all(lecturerId);
 
   res.json(slots);
+});
+
+// VIEW ALL OF MY OWN SLOTS, open and booked (lecturer only)
+app.get("/api/lecturer/slots", requireLecturerAuth, (req, res) => {
+  const slots = db.prepare(`
+    SELECT slots.id, slots.day_time, slots.status,
+           students.name AS student_name, students.student_number
+    FROM slots
+    LEFT JOIN bookings ON bookings.slot_id = slots.id
+    LEFT JOIN students ON bookings.student_id = students.id
+    WHERE slots.lecturer_id = ?
+  `).all(req.lecturer.id);
+
+  res.json(slots);
+});
+
+// DELETE ONE OF MY OPEN SLOTS (lecturer only; booked slots can't be deleted)
+app.delete("/api/lecturer/slots/:slotId", requireLecturerAuth, (req, res) => {
+  const result = db
+    .prepare("DELETE FROM slots WHERE id = ? AND lecturer_id = ? AND status = 'open'")
+    .run(req.params.slotId, req.lecturer.id);
+
+  if (result.changes === 0) {
+    return res.status(404).json({ error: "Slot not found, or it is already booked." });
+  }
+  res.json({ message: "Slot deleted." });
 });
 
 // BOOK A SLOT (student only, must be logged in)
@@ -223,6 +277,19 @@ app.post("/api/slots/:slotId/book", requireStudentAuth, (req, res) => {
   bookingStmt.run(slotId, studentId);
 
   res.status(201).json({ message: "Slot booked successfully." });
+});
+
+// VIEW MY BOOKINGS (student only)
+app.get("/api/student/bookings", requireStudentAuth, (req, res) => {
+  const bookings = db.prepare(`
+    SELECT slots.day_time, lecturers.name AS lecturer_name
+    FROM bookings
+    JOIN slots ON bookings.slot_id = slots.id
+    JOIN lecturers ON slots.lecturer_id = lecturers.id
+    WHERE bookings.student_id = ?
+  `).all(req.student.id);
+
+  res.json(bookings);
 });
 
 // VIEW BOOKINGS FOR A LECTURER (lecturer only, must be logged in)

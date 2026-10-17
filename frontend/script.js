@@ -1,3 +1,4 @@
+document.title = "Loaded " + new Date().toLocaleTimeString();
 const API_URL = "http://localhost:3000";
 
 // ===== LECTURER SIDE =====
@@ -37,7 +38,8 @@ if (loginForm) {
       welcomeMsg.textContent = `Welcome, ${data.name}`;
 
       loadSlots();
-loadBookings();
+      loadBookings();
+
     } catch (err) {
       alert("Could not reach the server. Is it running?");
     }
@@ -63,6 +65,41 @@ async function loadSlots() {
     slotDiv.textContent = slot.day_time;
     slotGrid.appendChild(slotDiv);
   });
+}
+
+async function loadBookings() {
+  const token = localStorage.getItem("lecturerToken");
+  const bookingsList = document.getElementById("bookingsList");
+
+  try {
+    const response = await fetch(`${API_URL}/api/lecturer/bookings`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      bookingsList.innerHTML = "<p>Could not load bookings.</p>";
+      return;
+    }
+
+    const bookings = await response.json();
+
+    bookingsList.innerHTML = "";
+
+    if (bookings.length === 0) {
+      bookingsList.innerHTML = "<p>No bookings yet.</p>";
+      return;
+    }
+
+    bookings.forEach((b) => {
+      const div = document.createElement("div");
+      div.classList.add("slot", "booked");
+      div.textContent = `${b.day_time} — ${b.student_name} (${b.student_number})`;
+      bookingsList.appendChild(div);
+    });
+
+  } catch (err) {
+    bookingsList.innerHTML = "<p>Error loading bookings — check server.</p>";
+  }
 }
 
 const createSlotsForm = document.getElementById("createSlotsForm");
@@ -143,30 +180,6 @@ if (registerForm) {
     registerForm.classList.add("hidden");
     loginForm.classList.remove("hidden");
     registerForm.reset();
-  });
-}
-async function loadBookings() {
-  const token = localStorage.getItem("lecturerToken");
-  const bookingsList = document.getElementById("bookingsList");
-
-  const response = await fetch(`${API_URL}/api/lecturer/bookings`, {
-    headers: { "Authorization": `Bearer ${token}` }
-  });
-
-  const bookings = await response.json();
-
-  bookingsList.innerHTML = "";
-
-  if (bookings.length === 0) {
-    bookingsList.innerHTML = "<p>No bookings yet.</p>";
-    return;
-  }
-
-  bookings.forEach((b) => {
-    const div = document.createElement("div");
-    div.classList.add("slot", "booked");
-    div.textContent = `${b.day_time} — ${b.student_name} (${b.student_number})`;
-    bookingsList.appendChild(div);
   });
 }
 

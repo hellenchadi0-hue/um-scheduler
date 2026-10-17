@@ -4,28 +4,313 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UMP Meeting Scheduler</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="description" content="Book a private meeting with your lecturer. Lecturers publish their free times, students book one.">
+  <style>
+    :root {
+      --ink: #0e2f4f;
+      --brand: #1f4e79;
+      --paper: #f5f8fc;
+      --white: #ffffff;
+      --line: #d3deea;
+      --muted: #4d6378;
+      --free: #1b7a50;
+      --free-tint: #dff1e7;
+      --booked: #b8323f;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.55;
+    }
+
+    a { color: inherit; }
+    :focus-visible { outline: 3px solid #f2b705; outline-offset: 3px; }
+
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 1.25rem; }
+
+    /* ---------- top bar ---------- */
+    .topbar { padding: 1.25rem 0; }
+    .wordmark {
+      font-weight: 750;
+      font-size: 1.15rem;
+      letter-spacing: -0.01em;
+      text-decoration: none;
+    }
+
+    /* ---------- hero ---------- */
+    .hero {
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      gap: 3rem;
+      align-items: center;
+      padding: 2.5rem 0 3.5rem;
+    }
+
+    h1 {
+      margin: 0 0 1.1rem;
+      font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+      font-size: clamp(2.3rem, 5.2vw, 3.9rem);
+      font-weight: 780;
+      line-height: 1.04;
+      letter-spacing: -0.025em;
+      max-width: 13ch;
+    }
+
+    .lead {
+      margin: 0 0 1.75rem;
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 34rem;
+    }
+
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+
+    .btn {
+      display: inline-block;
+      padding: 0.85rem 1.4rem;
+      border-radius: 10px;
+      font-size: 1.02rem;
+      font-weight: 650;
+      text-decoration: none;
+      border: 2px solid var(--ink);
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-solid { background: var(--ink); color: var(--white); }
+    .btn-solid:hover { background: var(--brand); border-color: var(--brand); }
+    .btn-line { background: transparent; color: var(--ink); }
+    .btn-line:hover { background: var(--ink); color: var(--white); }
+
+    /* ---------- the week (the one memorable thing) ---------- */
+    .week {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1.1rem 1.1rem 0.9rem;
+      box-shadow: 0 18px 40px -22px rgba(14, 47, 79, 0.35);
+    }
+
+    .week-grid {
+      display: grid;
+      grid-template-columns: 3.1rem repeat(5, 1fr);
+      gap: 6px;
+      align-items: center;
+    }
+
+    .day, .time {
+      font-size: 0.8rem;
+      font-weight: 650;
+      color: var(--muted);
+      text-align: center;
+    }
+    .time { text-align: right; padding-right: 0.35rem; font-weight: 500; }
+
+    .slot {
+      height: 2.35rem;
+      border-radius: 7px;
+      animation: pop 0.38s ease-out both;
+      animation-delay: calc(var(--i) * 32ms);
+    }
+    .slot.free { background: var(--free-tint); box-shadow: inset 0 0 0 1.5px var(--free); }
+    .slot.booked { background: var(--booked); }
+    .slot.none { background: transparent; animation: none; }
+
+    /* one slot is booked while the page loads */
+    .slot.flip {
+      animation: pop 0.38s ease-out both, book 0.45s ease-out 1.9s forwards;
+      animation-delay: calc(var(--i) * 32ms), 1.9s;
+    }
+
+    @keyframes pop {
+      from { opacity: 0; transform: scale(0.82); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    @keyframes book {
+      from { background: var(--free-tint); box-shadow: inset 0 0 0 1.5px var(--free); }
+      to   { background: var(--booked); box-shadow: inset 0 0 0 1.5px var(--booked); }
+    }
+
+    .week-foot {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 0.5rem 1rem;
+      margin-top: 0.9rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .key { display: inline-flex; align-items: center; gap: 0.4rem; margin-right: 0.9rem; }
+    .swatch { width: 0.9rem; height: 0.9rem; border-radius: 4px; display: inline-block; }
+    .swatch.free { background: var(--free-tint); box-shadow: inset 0 0 0 1.5px var(--free); }
+    .swatch.booked { background: var(--booked); }
+
+    /* ---------- how it works ---------- */
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+      padding: 2rem 0 2.5rem;
+      border-top: 1px solid var(--line);
+    }
+    .facts h2 { margin: 0 0 0.3rem; font-size: 1.05rem; letter-spacing: -0.005em; }
+    .facts p { margin: 0; color: var(--muted); }
+
+    /* ---------- choose a role ---------- */
+    .roles { padding: 1rem 0 4rem; }
+    .roles > h2 {
+      margin: 0 0 1.25rem;
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      letter-spacing: -0.02em;
+    }
+
+    .role-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.25rem; }
+
+    .role {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 1.75rem;
+      border-radius: 16px;
+      text-decoration: none;
+      transition: transform 0.15s;
+    }
+    .role:hover { transform: translateY(-3px); }
+    .role h3 { margin: 0; font-size: 1.5rem; letter-spacing: -0.02em; }
+    .role p { margin: 0; max-width: 28rem; }
+    .role .go { margin-top: 1rem; font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+
+    .role-student { background: var(--ink); color: var(--white); }
+    .role-student p { color: #c8d6e6; }
+    .role-lecturer { background: var(--white); border: 2px solid var(--ink); }
+    .role-lecturer p { color: var(--muted); }
+
+    footer { padding: 1.5rem 0 2.5rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.9rem; }
+
+    /* ---------- small screens ---------- */
+    @media (max-width: 860px) {
+      .hero { grid-template-columns: 1fr; gap: 2rem; padding-top: 1rem; }
+      h1 { max-width: none; }
+      .facts { grid-template-columns: 1fr; gap: 1.25rem; }
+      .role-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .week { padding: 0.8rem 0.7rem 0.7rem; }
+      .week-grid { grid-template-columns: 2.6rem repeat(5, 1fr); gap: 4px; }
+      .slot { height: 1.9rem; }
+      .btn { width: 100%; text-align: center; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .slot, .slot.flip { animation: none; }
+      .slot.flip { background: var(--booked); box-shadow: none; }
+      .role { transition: none; }
+      html { scroll-behavior: auto; }
+    }
+  </style>
 </head>
 <body>
 
-  <header>
-    <h1>OFFICE HOURS</h1>
-    <p>Book a private meeting with your lecturer — no more waiting outside the office.</p>
-  </header>
-
-  <main>
-    <div class="choice-cards">
-      <a href="lecturer.html" class="card">
-        <h2>I'm a Lecturer</h2>
-        <p>Set your available meeting times</p>
-      </a>
-      <a href="student.html" class="card">
-        <h2>I'm a Student</h2>
-        <p>Book a time with your lecturer</p>
-      </a>
+  <div class="wrap">
+    <div class="topbar">
+      <a class="wordmark" href="index.html">OfficeHours</a>
     </div>
-  </main>
 
-  <script src="script.js"></script>
+    <main>
+      <section class="hero">
+        <div>
+          <h1>Meet your lecturer. Skip the queue at the door.</h1>
+          <p class="lead">Lecturers publish the times they are free. Students book one in a few clicks. Both of you see the booking straight away.</p>
+          <div class="hero-actions">
+            <a class="btn btn-solid" href="student.html">Book a time</a>
+            <a class="btn btn-line" href="lecturer.html">Set my availability</a>
+          </div>
+        </div>
+
+        <div class="week">
+          <div class="week-grid" id="weekGrid" aria-hidden="true"></div>
+          <div class="week-foot">
+            <span>
+              <span class="key"><span class="swatch free"></span>Free</span>
+              <span class="key"><span class="swatch booked"></span>Booked</span>
+            </span>
+            <span>A lecturer's week, as students see it</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="facts">
+        <div>
+          <h2>No more waiting outside</h2>
+          <p>Pick a time that is already set aside for you, instead of hoping the office is free.</p>
+        </div>
+        <div>
+          <h2>One booking per slot</h2>
+          <p>Once a time is taken, nobody else can book it, so there are no double bookings.</p>
+        </div>
+        <div>
+          <h2>Everything in one place</h2>
+          <p>Lecturers see who is coming and when. Students see all of their bookings.</p>
+        </div>
+      </section>
+
+      <section class="roles" id="start">
+        <h2>How are you using OfficeHours?</h2>
+        <div class="role-grid">
+          <a class="role role-student" href="student.html">
+            <h3>I'm a student</h3>
+            <p>Choose a lecturer, pick a free time and book it.</p>
+            <span class="go">Book a time</span>
+          </a>
+          <a class="role role-lecturer" href="lecturer.html">
+            <h3>I'm a lecturer</h3>
+            <p>Set the times you are available and see who has booked.</p>
+            <span class="go">Set my availability</span>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer>UMP Meeting Scheduler</footer>
+  </div>
+
+  <script>
+    (function () {
+      var grid = document.getElementById('weekGrid');
+      var days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+      var times = ['09:00', '09:30', '10:00', '10:30', '11:00'];
+      // f = free, b = booked, - = no slot. The slot marked FLIP is booked as the page loads.
+      var rows = ['fbffn', 'fFbff', 'bff-f', 'fffbf', '-fffb'];
+      var i = 0;
+
+      function add(cls, text) {
+        var d = document.createElement('div');
+        d.className = cls;
+        if (text) d.textContent = text;
+        grid.appendChild(d);
+        return d;
+      }
+
+      add('time', '');
+      days.forEach(function (d) { add('day', d); });
+
+      rows.forEach(function (row, r) {
+        add('time', times[r]);
+        row.split('').forEach(function (c) {
+          var cls = 'slot ';
+          if (c === 'b') cls += 'booked';
+          else if (c === 'f' || c === 'F') cls += 'free' + (c === 'F' ? ' flip' : '');
+          else cls += 'none';
+          var s = add(cls);
+          s.style.setProperty('--i', i++);
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

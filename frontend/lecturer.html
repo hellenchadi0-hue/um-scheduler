@@ -11,62 +11,74 @@
   <header>
     <h1>OfficeHours</h1>
     <p>Lecturer dashboard</p>
+    <nav><a href="index.html">Home</a> · <a href="student.html">Student</a></nav>
   </header>
 
   <main>
-    <form id="loginForm" class="login-form">
-  <label for="lecturerName">Staff email</label>
-  <input type="email" id="lecturerName" placeholder="you@ump.ac.za" autocomplete="off" required>
+    <form id="loginForm" class="card login-form">
+      <label for="lecturerName">Staff email</label>
+      <input type="email" id="lecturerName" placeholder="you@ump.ac.za" autocomplete="off" required>
 
-  <label for="lecturerPassword">Password</label>
-  <input type="password" id="lecturerPassword" placeholder="Password" required>
+      <label for="lecturerPassword">Password</label>
+      <input type="password" id="lecturerPassword" placeholder="Password" required>
 
-  <button type="submit">Sign in</button>
-  <p><a href="#" id="showRegister">New here? Register</a></p>
-</form>
+      <button type="submit">Sign in</button>
+      <p class="msg" id="loginMsg" role="alert"></p>
+      <p><a href="#" id="showRegister">New here? Register</a></p>
+    </form>
 
-<form id="registerForm" class="login-form hidden">
-  <label for="regName">Full name</label>
-  <input type="text" id="regName" placeholder="Dr. Jane Sithole" required>
+    <form id="registerForm" class="card login-form hidden">
+      <label for="regName">Full name</label>
+      <input type="text" id="regName" placeholder="Dr. Jane Sithole" required>
 
-  <label for="regEmail">Staff email</label>
-  <input type="email" id="regEmail" placeholder="you@ump.ac.za" required>
+      <label for="regEmail">Staff email</label>
+      <input type="email" id="regEmail" placeholder="you@ump.ac.za" required>
 
-  <label for="regPassword">Password</label>
-  <input type="password" id="regPassword" placeholder="Choose a password" required>
+      <label for="regPassword">Password</label>
+      <input type="password" id="regPassword" placeholder="Choose a password (min 6 characters)" minlength="6" required>
 
-  <button type="submit">Create account</button>
-  <p><a href="#" id="showLogin">Already have an account? Sign in</a></p>
-</form>
+      <button type="submit">Create account</button>
+      <p class="msg" id="registerMsg" role="alert"></p>
+      <p><a href="#" id="showLogin">Already have an account? Sign in</a></p>
+    </form>
 
     <div id="dashboard" class="dashboard hidden">
-      <p id="welcomeMsg"></p>
-      <form id="createSlotsForm" class="create-slots-form">
-  <label for="slotDay">Day</label>
-  <select id="slotDay">
-    <option>Mon</option>
-    <option>Tue</option>
-    <option>Wed</option>
-    <option>Thu</option>
-    <option>Fri</option>
-  </select>
+      <div class="welcome-row">
+        <p id="welcomeMsg"></p>
+        <button type="button" id="logoutBtn" class="secondary">Sign out</button>
+      </div>
 
-  <label for="slotStart">Start time</label>
-  <input type="time" id="slotStart" required>
+      <form id="createSlotsForm" class="card create-slots-form">
+        <h2>Create slots</h2>
+        <label for="slotDay">Day</label>
+        <select id="slotDay">
+          <option>Mon</option>
+          <option>Tue</option>
+          <option>Wed</option>
+          <option>Thu</option>
+          <option>Fri</option>
+        </select>
 
-  <label for="slotEnd">End time</label>
-  <input type="time" id="slotEnd" required>
+        <label for="slotStart">Start time</label>
+        <input type="time" id="slotStart" required>
 
-  <label for="slotDuration">Slot length (minutes)</label>
-  <input type="number" id="slotDuration" value="15" min="5" required>
+        <label for="slotEnd">End time</label>
+        <input type="time" id="slotEnd" required>
 
-  <button type="submit">Create slots</button>
-</form>
+        <label for="slotDuration">Slot length (minutes)</label>
+        <input type="number" id="slotDuration" value="15" min="5" required>
 
-<div id="slotGrid" class="slot-grid"></div>
+        <button type="submit">Create slots</button>
+        <p class="msg" id="slotMsg" role="alert"></p>
+      </form>
+
+      <h2>My slots</h2>
+      <p class="hint">Green = free (click to delete). Red = booked.</p>
+      <div id="slotGrid" class="slot-grid"></div>
+
+      <h3>Upcoming bookings</h3>
+      <div id="bookingsList"></div>
     </div>
-    <h3>Upcoming bookings</h3>
-<div id="bookingsList"></div>
   </main>
 
   <script src="script.js"></script>
