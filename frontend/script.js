@@ -1,5 +1,5 @@
 document.title = "Loaded " + new Date().toLocaleTimeString();
-const API_URL = "http://localhost:3000";
+ const API_URL = "http://localhost:3000";
 
 // ===== LECTURER SIDE =====
 

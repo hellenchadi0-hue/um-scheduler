@@ -86,7 +86,7 @@
       email: $('regStuEmail').value.trim().toLowerCase(),
       password: $('regStuPassword').value
     };
-    if (body.password.length < 6) return say('studentRegisterMsg', 'Password must be at least 6 characters.');
+    if (body.password.length < 8) return say('studentRegisterMsg', 'Password must be at least 8 characters.');
     try {
       await api('/api/student/register', { method: 'POST', body: JSON.stringify(body) });
       registerForm.reset();

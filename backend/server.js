@@ -16,6 +16,17 @@ app.use(express.static(path.join(__dirname, "..", "frontend")));
 
 const JWT_SECRET = "dev-secret-change-this-later";
 
+// Password rule: at least 8 characters, with at least one letter and one number.
+function checkPassword(password) {
+  if (password.length < 8) {
+    return "Password must be at least 8 characters.";
+  }
+  if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+    return "Password must contain at least one letter and one number.";
+  }
+  return null;
+}
+
 app.get("/api/health", (req, res) => {
   res.json({ status: "OfficeHours backend is running" });
 });
@@ -27,6 +38,11 @@ app.post("/api/lecturer/register", (req, res) => {
 
   if (!name || !staff_email || !password) {
     return res.status(400).json({ error: "All fields are required." });
+  }
+
+  const passwordError = checkPassword(password);
+  if (passwordError) {
+    return res.status(400).json({ error: passwordError });
   }
 
   const password_hash = bcrypt.hashSync(password, 10);
@@ -79,6 +95,11 @@ app.post("/api/student/register", (req, res) => {
 
   if (!name || !student_number || !email || !password) {
     return res.status(400).json({ error: "All fields are required." });
+  }
+
+  const passwordError = checkPassword(password);
+  if (passwordError) {
+    return res.status(400).json({ error: passwordError });
   }
 
   const password_hash = bcrypt.hashSync(password, 10);
